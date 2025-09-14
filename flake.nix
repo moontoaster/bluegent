@@ -16,13 +16,25 @@
       instantiateSystem =
         f: system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ self.overlays.default ];
+          };
         in
         f pkgs;
 
       forEachSystem = f: genAttrs supportedSystems (system: instantiateSystem f system);
     in
     {
+      overlays.default = final: prev: {
+        bluegent = final.callPackage ./default.nix { };
+      };
+
+      packages = forEachSystem (pkgs: {
+        inherit (pkgs) bluegent;
+        default = pkgs.bluegent;
+      });
+
       devShells = forEachSystem (pkgs: {
         default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
