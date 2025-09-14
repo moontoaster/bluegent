@@ -27,8 +27,12 @@
         default = pkgs.mkShell {
           nativeBuildInputs = with pkgs; [
             cargo
+            rustc
             rust-analyzer
+            rustfmt
           ];
+
+          RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
         };
       });
     };
