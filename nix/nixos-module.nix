@@ -72,7 +72,10 @@ in
         bindsTo = dependencies;
         after = dependencies;
 
-        restartTriggers = [ cfg ];
+        restartTriggers = [
+          cfg.package
+          config.environment.etc."bluegent.conf".source
+        ];
 
         serviceConfig = {
           Type = "exec";
