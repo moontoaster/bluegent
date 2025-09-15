@@ -29,20 +29,22 @@ in
       type = types.submodule {
         freeformType = settingsFormat.type;
 
-        pin_code = mkOption {
-          type = types.str;
-          description = "Preset PIN code to use for legacy pairing.";
-          default = "0000";
-        };
+        options = {
+          pin_code = mkOption {
+            type = types.str;
+            description = "Preset PIN code to use for legacy pairing.";
+            default = "0000";
+          };
 
-        authorized_services = mkOption {
-          type = with types; listOf str;
-          description = "List of authorized (allowed to use by devices) services.
+          authorized_services = mkOption {
+            type = with types; listOf str;
+            description = "List of authorized (allowed to use by devices) services.
             These should be UUIDs with hex letters encoded in lowercase.
             At the moment, Bluegent will not tell you if you specified them incorrectly,
             it will probably just reject your service.
             As you can probably tell it's very much a work-in-progress";
-          default = [ ];
+            default = [ ];
+          };
         };
       };
     };
