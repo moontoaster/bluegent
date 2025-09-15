@@ -5,7 +5,9 @@
 
   nixConfig = {
     extra-substituters = [ "https://bluegent.cachix.org" ];
-    extra-trusted-public-keys = [ "bluegent.cachix.org-1:bXF6hBSwit6YXZ/SdlAU/pgDaYx3uVCI8BkxBJSL/bY=" ];
+    extra-trusted-public-keys = [
+      "bluegent.cachix.org-1:bXF6hBSwit6YXZ/SdlAU/pgDaYx3uVCI8BkxBJSL/bY="
+    ];
   };
 
   outputs =
@@ -31,14 +33,23 @@
       forEachSystem = f: genAttrs supportedSystems (system: instantiateSystem f system);
     in
     {
-      overlays.default = final: prev: {
-        bluegent = final.callPackage ./default.nix { };
+      overlays = rec {
+        bluegent = final: prev: {
+          bluegent = final.callPackage ./nix/pkg.nix { };
+        };
+
+        default = bluegent;
       };
 
-      packages = forEachSystem (pkgs: {
+      packages = forEachSystem (pkgs: rec {
         inherit (pkgs) bluegent;
-        default = pkgs.bluegent;
+        default = bluegent;
       });
+
+      nixosModules = rec {
+        bluegent = import ./nix/nixos-module.nix;
+        default = bluegent;
+      };
 
       devShells = forEachSystem (pkgs: {
         default = pkgs.mkShell {
