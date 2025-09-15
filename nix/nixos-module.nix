@@ -61,8 +61,7 @@ in
     systemd.services.bluegent =
       let
         dependencies = [
-          config.systemd.services.bluetooth.name
-          config.systemd.sockets.dbus.name
+          "bluetooth.service"
         ];
       in
       {
