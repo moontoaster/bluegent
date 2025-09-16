@@ -17,7 +17,7 @@ let
   cfg = config.services.bluegent;
   settingsFormat = pkgs.formats.toml { };
 
-  description = "Bluegent, a BlueZ authentication agent made for headless devices";
+  description = "Bluegent, a headless authentication agent for BlueZ";
 in
 {
   options.services.bluegent = {

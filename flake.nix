@@ -3,13 +3,6 @@
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-25.05";
   };
 
-  nixConfig = {
-    extra-substituters = [ "https://bluegent.cachix.org" ];
-    extra-trusted-public-keys = [
-      "bluegent.cachix.org-1:bXF6hBSwit6YXZ/SdlAU/pgDaYx3uVCI8BkxBJSL/bY="
-    ];
-  };
-
   outputs =
     { self, nixpkgs }:
     let
