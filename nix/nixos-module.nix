@@ -72,6 +72,8 @@ in
         bindsTo = dependencies;
         after = dependencies;
 
+        wantedBy = [ "multi-user.target" ];
+
         restartTriggers = [
           cfg.package
           config.environment.etc."bluegent.conf".source
