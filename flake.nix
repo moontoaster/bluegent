@@ -28,7 +28,13 @@
     {
       overlays = rec {
         bluegent = final: prev: {
-          bluegent = final.callPackage ./nix/pkg.nix { };
+          bluegent =
+            let
+              c2n = import ./nix/Crate.nix {
+                pkgs = final;
+              };
+            in
+            c2n.rootCrate.build;
         };
 
         default = bluegent;
@@ -51,6 +57,7 @@
             rustc
             rust-analyzer
             rustfmt
+            crate2nix
           ];
 
           RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
