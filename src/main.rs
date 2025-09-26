@@ -1,12 +1,14 @@
 mod agent;
 mod config;
+mod dbus;
 
 use std::sync::Arc;
 
 use smol::Executor;
 
-use crate::agent::{Agent, AgentManagerProxy};
+use crate::agent::Agent;
 use crate::config::Config;
+use crate::dbus::AgentManagerProxy;
 
 const OBJ_PATH: &str = "/moontoaster/bluegent";
 

@@ -1,45 +1,18 @@
 use std::sync::Arc;
 
-use zbus::{
-    DBusError, interface, proxy,
-    zvariant::{ObjectPath, OwnedObjectPath},
-};
+use zbus::{Connection, interface, zvariant::ObjectPath};
 
-use crate::config::Config;
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(DBusError, Debug)]
-#[zbus(prefix = "org.bluez.Error")]
-pub enum Error {
-    #[zbus(error)]
-    ZBus(zbus::Error),
-
-    Rejected,
-    Canceled,
-    InvalidArguments,
-    AlreadyExists,
-    DoesNotExist,
-}
+use crate::dbus::{Error, Result};
+use crate::{config::Config, dbus::DeviceProxy};
 
 pub struct Agent {
     config: Arc<Config>,
-    pairing_with: Option<OwnedObjectPath>,
 }
 
 impl Agent {
     pub fn new(config: Arc<Config>) -> Self {
-        Self {
-            config,
-            pairing_with: None,
-        }
+        Self { config }
     }
-}
-
-fn ssp_error() {
-    log::error!(
-        "Received request related to Bluetooth Simple Secure Pairing. This is currently unsupported. Cancelling pairing"
-    );
 }
 
 #[interface(name = "org.bluez.Agent1", introspection_docs = false)]
@@ -48,45 +21,114 @@ impl Agent {
         todo!()
     }
 
-    async fn request_pin_code(&mut self, device: ObjectPath<'_>) -> Result<&str> {
-        log::info!("Received PIN code request for {}", device);
+    async fn request_pin_code(
+        &mut self,
+        device: ObjectPath<'_>,
+        #[zbus(connection)] conn: &Connection,
+    ) -> Result<&str> {
+        let device = DeviceProxy::new(conn, device).await?;
 
-        self.pairing_with = Some(OwnedObjectPath::from(device));
+        log::info!(
+            "Received PIN code request for {} (\"{}\")",
+            device.address().await?,
+            device.name().await?
+        );
 
         Ok(self.config.pin_code.as_str())
     }
 
-    async fn display_pin_code(&self, device: ObjectPath<'_>, _pincode: &str) -> Result<()> {
+    async fn display_pin_code(
+        &self,
+        device: ObjectPath<'_>,
+        _pincode: &str,
+        #[zbus(connection)] conn: &Connection,
+    ) -> Result<()> {
+        let device = DeviceProxy::new(conn, device).await?;
+
         // TODO: explain what's up
         log::error!(
-            "Received PIN code display request for {}... this is unsupported \
+            "Received PIN code display request for {} (\"{}\")... this is unsupported \
             and there's a configuration issue. Cancelling pairing",
-            device
+            device.address().await?,
+            device.name().await?
         );
 
         Err(Error::Canceled)
     }
 
-    async fn request_passkey(&self, device: ObjectPath<'_>) -> Result<u32> {
-        ssp_error();
+    async fn request_passkey(
+        &self,
+        device: ObjectPath<'_>,
+        #[zbus(connection)] conn: &Connection,
+    ) -> Result<u32> {
+        let device = DeviceProxy::new(conn, device).await?;
+
+        log::error!(
+            "Received passkey request for {} (\"{}\"), this is unsupported. Cancelling pairing",
+            device.address().await?,
+            device.name().await?,
+        );
+
         Err(Error::Canceled)
     }
 
-    async fn display_passkey(&self, device: ObjectPath<'_>, passkey: u32, entered: u16) {
-        ssp_error();
+    async fn display_passkey(
+        &self,
+        device: ObjectPath<'_>,
+        passkey: u32,
+        entered: u16,
+        #[zbus(connection)] conn: &Connection,
+    ) {
+        let device = DeviceProxy::new(conn, device).await.unwrap();
+
+        log::error!(
+            "Received passkey display request for {} (\"{}\"), this is unsupported",
+            device.address().await.unwrap(),
+            device.name().await.unwrap(),
+        );
     }
 
-    async fn request_confirmation(&self, device: ObjectPath<'_>, passkey: u32) -> Result<()> {
-        ssp_error();
+    async fn request_confirmation(
+        &self,
+        device: ObjectPath<'_>,
+        passkey: u32,
+        #[zbus(connection)] conn: &Connection,
+    ) -> Result<()> {
+        let device = DeviceProxy::new(conn, device).await?;
+
+        log::error!(
+            "Received passkey confirm request for {} (\"{}\"), this is unsupported. Cancelling pairing",
+            device.address().await?,
+            device.name().await?,
+        );
+
         Err(Error::Canceled)
     }
 
-    async fn request_authorization(&self, device: ObjectPath<'_>) -> Result<()> {
-        ssp_error();
-        Err(Error::Canceled)
+    async fn request_authorization(
+        &self,
+        device: ObjectPath<'_>,
+        #[zbus(connection)] conn: &Connection,
+    ) -> Result<()> {
+        let device = DeviceProxy::new(conn, device).await?;
+
+        log::info!(
+            "Received authorization request for {} (\"{}\")",
+            device.address().await?,
+            device.name().await?,
+        );
+
+        Ok(())
     }
 
-    async fn authorize_service(&self, device: ObjectPath<'_>, uuid: &str) -> Result<()> {
+    async fn authorize_service(
+        &self,
+        device: ObjectPath<'_>,
+        uuid: &str,
+        #[zbus(connection)] conn: &Connection,
+    ) -> Result<()> {
+        let device = DeviceProxy::new(conn, device).await?;
+
         let is_authorized = self
             .config
             .authorized_services
@@ -94,34 +136,25 @@ impl Agent {
             .any(|authed_uuid| authed_uuid.as_str() == uuid);
 
         if is_authorized {
-            log::info!("Device {} wants to use service {}, permitted", device, uuid);
+            log::info!(
+                "Device {} (\"{}\") wants to use service {}, permitted",
+                device.address().await?,
+                device.name().await?,
+                uuid
+            );
             Ok(())
         } else {
-            log::info!("Device {} wants to use service {}, denied", device, uuid);
+            log::info!(
+                "Device {} (\"{}\") wants to use service {}, denied",
+                device.address().await?,
+                device.name().await?,
+                uuid
+            );
             Err(Error::Rejected)
         }
     }
 
     async fn cancel(&self) {
-        if self.pairing_with == None {
-            log::debug!("Spurious cancel call??? Ignoring");
-            return;
-        }
-
-        log::info!(
-            "Device {} canceled pairing",
-            self.pairing_with.as_ref().unwrap()
-        );
+        log::debug!("Cancel method is currently stubbed out");
     }
-}
-
-#[proxy(
-    interface = "org.bluez.AgentManager1",
-    default_service = "org.bluez",
-    default_path = "/org/bluez"
-)]
-pub trait AgentManager {
-    fn register_agent(&self, agent: ObjectPath<'_>, capability: &str) -> Result<()>;
-    fn unregister_agent(&self, agent: ObjectPath<'_>) -> Result<()>;
-    fn request_default_agent(&self, agent: ObjectPath<'_>) -> Result<()>;
 }
