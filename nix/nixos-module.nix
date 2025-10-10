@@ -72,7 +72,7 @@ in
         bindsTo = dependencies;
         after = dependencies;
 
-        wantedBy = [ "multi-user.target" ];
+        wantedBy = [ "bluetooth.target" ];
 
         restartTriggers = [
           cfg.package
