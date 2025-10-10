@@ -18,4 +18,5 @@ jobs:
         with:
           name: bluegent
           signingKey: ${{ secrets.CACHIX_SECRET_KEY }} # oop
+          cachixArgs: "-v -j8"
       - run: nix build
